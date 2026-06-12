@@ -1,5 +1,5 @@
 name: ADHS Appointment Checker
-version: "0.8.0"
+version: "0.9.0"
 slug: adhs_appointment_checker
 description: >-
   Periodically checks samedi.de for available ADHS appointment slots, with a web

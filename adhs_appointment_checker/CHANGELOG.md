@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.0
+
+- Redesigned overview into a status dashboard: status tiles at the top
+  (Verfügbar / Überwacht / Fehler / Countdown bis zur nächsten Prüfung), doctors
+  shown as colour-coded cards **sorted by status** (verfügbar → Fehler → keine →
+  ungeprüft → inaktiv) and earliest day, so actionable entries are seen first.
+- Auto-refresh: live countdown to the next scheduled check, reloads when due.
+- Settings and doctor management moved into a collapsible section to keep the
+  status front and centre.
+
 ## 0.8.0
 
 - Support modern Home Assistant notify **entities** (e.g. `notify.iphone_max`

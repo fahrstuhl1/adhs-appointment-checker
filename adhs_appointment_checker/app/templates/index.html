@@ -7,174 +7,211 @@
   <link rel="stylesheet" href="{{ base_path }}/static/style.css">
 </head>
 <body>
-<header>
-  <h1>🧠 ADHS Appointment Checker</h1>
-  <p class="subtitle">Stündliche samedi.de-Verfügbarkeitsprüfung für ADHS-Termine</p>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">🧠</span>
+    <div>
+      <h1>ADHS Appointment Checker</h1>
+      <p class="subtitle">samedi.de-Verfügbarkeit für ADHS-Termine</p>
+    </div>
+  </div>
+  <form method="post" action="{{ base_path }}/check" class="topbar-action">
+    <button type="submit" class="btn btn-light">↻ Jetzt alle prüfen</button>
+  </form>
 </header>
 
 <main>
-  {% if error %}
-  <div class="banner banner-err">⚠ {{ error }}</div>
-  {% endif %}
-  {% if notice %}
-  <div class="banner banner-ok">✓ {{ notice }}</div>
-  {% endif %}
+  {% if error %}<div class="banner banner-err">⚠ {{ error }}</div>{% endif %}
+  {% if notice %}<div class="banner banner-ok">✓ {{ notice }}</div>{% endif %}
 
-  <section class="card">
-    <h2>Globale Einstellungen</h2>
-    <form method="post" action="{{ base_path }}/settings" class="inline-form">
-      <label>
-        Prüfintervall (Minuten)
-        <input type="number" name="interval_minutes" min="5" max="1440"
-               value="{{ interval_minutes }}" required>
-      </label>
-      <label>
-        Benachrichtigungsdienst
-        <input type="text" name="notify_service" list="notify-options"
-               placeholder="{{ notify_default }}" value="{{ notify_service }}">
-      </label>
-      <button type="submit" class="btn">Speichern</button>
-      <button type="submit" class="btn btn-secondary"
-              formaction="{{ base_path }}/notify/test">Test senden</button>
-    </form>
-    <datalist id="notify-options">
-      <option value="persistent_notification">
-    </datalist>
-    <p class="hint">
-      Entweder ein klassischer Notify-<strong>Dienst</strong> ohne Präfix
-      (z. B. <code>mobile_app_dein_handy</code>) oder eine Notify-<strong>Entität</strong>
-      mit Präfix (z. B. <code>notify.iphone_max</code>, neue Companion-App). Den
-      genauen Namen findest du unter <em>Entwicklerwerkzeuge → Aktionen/Zustände</em>.
-      Leer = Add-on-Option (<code>{{ notify_default }}</code>). Benachrichtigt wird,
-      wenn ein Termin neu auftaucht oder früher wird.
-    </p>
-    <form method="post" action="{{ base_path }}/check" class="inline-form">
-      <button type="submit" class="btn btn-secondary">Jetzt alle prüfen</button>
-      <span class="hint">API-Basis: <code>{{ base_url }}</code></span>
-    </form>
+  <!-- Status tiles -->
+  <section class="tiles">
+    <div class="tile {{ 'tile-accent-ok' if summary.available else '' }}">
+      <span class="tile-value">{{ summary.available }}</span>
+      <span class="tile-label">Verfügbar</span>
+    </div>
+    <div class="tile">
+      <span class="tile-value">{{ summary.monitored }}</span>
+      <span class="tile-label">Überwacht</span>
+    </div>
+    <div class="tile {{ 'tile-accent-err' if summary.errors else '' }}">
+      <span class="tile-value">{{ summary.errors }}</span>
+      <span class="tile-label">Fehler</span>
+    </div>
+    <div class="tile">
+      <span class="tile-value" id="countdown"
+            data-next="{{ summary.next_check or '' }}">–</span>
+      <span class="tile-label">Nächste Prüfung</span>
+    </div>
   </section>
+  <p class="last-checked muted">
+    Zuletzt geprüft: <strong>{{ summary.last_checked | dt }}</strong>
+    · Intervall: alle {{ interval_minutes }} min
+  </p>
 
-  <section class="card">
-    <h2>{{ 'Arzt bearbeiten' if edit_doctor else 'Arzt hinzufügen' }}</h2>
-    {% if not edit_doctor %}
-    <p class="hint">
-      Tipp: samedi-Buchungs-URL (<code>termin.samedi.de/b/…</code>) einfügen –
-      die IDs werden automatisch aufgelöst. Alternativ die IDs unten manuell setzen.
-    </p>
+  <!-- Doctor status cards -->
+  <section class="doc-grid">
+    {% if not items %}
+      <p class="empty">Noch keine Ärzte konfiguriert. Öffne unten „Ärzte verwalten".</p>
     {% endif %}
-    <form method="post" action="{{ base_path }}/doctors" class="grid-form">
-      <input type="hidden" name="id" value="{{ edit_doctor.id if edit_doctor else '' }}">
-      <label>Name / Bezeichnung
-        <input type="text" name="name" placeholder="Dr. Müller – ADHS Erstgespräch"
-               value="{{ edit_doctor.name if edit_doctor else '' }}" required>
-      </label>
-      {% if not edit_doctor %}
-      <label>samedi-Buchungs-URL <span class="opt">(optional, füllt die IDs)</span>
-        <input type="text" name="booking_url"
-               placeholder="https://termin.samedi.de/b/…?insuranceId=public">
-      </label>
-      {% endif %}
-      <label>event_category_id
-        <input type="text" name="event_category_id"
-               value="{{ edit_doctor.event_category_id if edit_doctor else '' }}">
-      </label>
-      <label>event_type_id
-        <input type="text" name="event_type_id"
-               value="{{ edit_doctor.event_type_id if edit_doctor else '' }}">
-      </label>
-      <label>insurance_id <span class="opt">(z. B. <code>public</code>)</span>
-        <input type="text" name="insurance_id"
-               value="{{ edit_doctor.insurance_id if edit_doctor else 'public' }}">
-      </label>
-      <label>Vorausschau (Tage)
-        <input type="number" name="days_ahead" min="1" max="365"
-               value="{{ edit_doctor.days_ahead if edit_doctor else 90 }}">
-      </label>
-      <label class="checkbox">
-        <input type="checkbox" name="enabled"
-               {{ 'checked' if (not edit_doctor) or edit_doctor.enabled else '' }}>
-        Aktiv
-      </label>
-      <div class="actions">
-        <button type="submit" class="btn">{{ 'Aktualisieren' if edit_doctor else 'Hinzufügen' }}</button>
-        {% if edit_doctor %}
-        <a class="btn btn-link" href="{{ base_path }}/">Abbrechen</a>
-        {% endif %}
+    {% for it in items %}
+    {% set s = it.s %}
+    <article class="doc-card status-{{ it.status }}">
+      <div class="doc-head">
+        <span class="status-dot"></span>
+        <h3 class="doc-name">{{ it.doctor.name }}</h3>
+        {% if it.status == 'available' %}<span class="badge badge-ok">verfügbar</span>
+        {% elif it.status == 'error' %}<span class="badge badge-err" title="{{ s.error }}">Fehler</span>
+        {% elif it.status == 'none' %}<span class="badge badge-none">keine Termine</span>
+        {% elif it.status == 'disabled' %}<span class="badge badge-off">inaktiv</span>
+        {% else %}<span class="badge badge-unknown">noch nicht geprüft</span>{% endif %}
       </div>
-    </form>
+
+      <div class="doc-metrics">
+        <div class="metric">
+          <span class="metric-label">Frühester Termin</span>
+          <span class="metric-value {{ 'hot' if it.status == 'available' }}">{{ s.earliest_day or '–' }}</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Freie Tage / Slots</span>
+          <span class="metric-value">
+            {% if s.available_count is not none %}{{ s.available_count }}
+              {%- if s.slot_count %} / {{ s.slot_count }}{% endif %}
+            {% else %}–{% endif %}
+          </span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Zuletzt geprüft</span>
+          <span class="metric-value small">{{ s.checked_at | dt }}</span>
+        </div>
+      </div>
+
+      {% if s.available_days %}
+      <div class="days">{{ s.available_days[:10] | join(' · ') }}{% if s.available_days|length > 10 %} …{% endif %}</div>
+      {% endif %}
+      {% if it.status == 'error' and s.error %}
+      <div class="card-error">⚠ {{ s.error }}</div>
+      {% endif %}
+
+      <div class="doc-actions">
+        <form method="post" action="{{ base_path }}/doctors/{{ it.doctor.id }}/check">
+          <button class="btn btn-mini" type="submit">Prüfen</button>
+        </form>
+        <a class="btn btn-mini btn-secondary" href="{{ base_path }}/?edit={{ it.doctor.id }}#manage">Bearbeiten</a>
+        <form method="post" action="{{ base_path }}/doctors/{{ it.doctor.id }}/delete"
+              onsubmit="return confirm('Diesen Arzt wirklich löschen?');">
+          <button class="btn btn-mini btn-danger" type="submit">Löschen</button>
+        </form>
+      </div>
+    </article>
+    {% endfor %}
   </section>
 
-  <section class="card">
-    <h2>Ärzte &amp; letztes Ergebnis</h2>
-    {% if not doctors %}
-      <p class="empty">Noch keine Ärzte konfiguriert. Füge oben einen hinzu.</p>
-    {% else %}
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Status</th>
-          <th>Frühester Termin</th>
-          <th>Freie Tage</th>
-          <th>Zuletzt geprüft</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for doctor in doctors %}
-        {% set s = state.get(doctor.id, {}) %}
-        <tr class="{{ 'disabled' if not doctor.enabled else '' }}">
-          <td data-label="Name">
-            <strong>{{ doctor.name }}</strong>
-            {% if not doctor.enabled %}<span class="badge badge-off">inaktiv</span>{% endif %}
-          </td>
-          <td data-label="Status">
-            {% if s.status == 'ok' and s.available_count and s.available_count > 0 %}
-              <span class="badge badge-ok">verfügbar</span>
-            {% elif s.status == 'ok' %}
-              <span class="badge badge-none">keine</span>
-            {% elif s.status == 'error' %}
-              <span class="badge badge-err" title="{{ s.error }}">Fehler</span>
-            {% else %}
-              <span class="badge badge-unknown">—</span>
-            {% endif %}
-          </td>
-          <td data-label="Frühester Termin">{{ s.earliest_day or '–' }}</td>
-          <td data-label="Freie Tage">
-            {% if s.available_count is not none %}
-              {{ s.available_count }} Tag(e){% if s.slot_count %}, {{ s.slot_count }} Slot(s){% endif %}
-            {% else %}–{% endif %}
-            {% if s.available_days %}
-              <div class="days">{{ s.available_days[:8] | join(', ') }}{% if s.available_days|length > 8 %} …{% endif %}</div>
-            {% endif %}
-          </td>
-          <td data-label="Zuletzt geprüft" class="muted nowrap">{{ s.checked_at | dt }}</td>
-          <td data-label="Aktionen" class="row-actions">
-            <form method="post" action="{{ base_path }}/doctors/{{ doctor.id }}/check">
-              <button class="btn btn-mini" type="submit">Prüfen</button>
-            </form>
-            <a class="btn btn-mini btn-secondary" href="{{ base_path }}/?edit={{ doctor.id }}">Bearbeiten</a>
-            <form method="post" action="{{ base_path }}/doctors/{{ doctor.id }}/delete"
-                  onsubmit="return confirm('Diesen Arzt wirklich löschen?');">
-              <button class="btn btn-mini btn-danger" type="submit">Löschen</button>
-            </form>
-          </td>
-        </tr>
-        {% if s.status == 'error' and s.error %}
-        <tr class="error-row"><td colspan="6"><span class="muted">⚠ {{ s.error }}</span></td></tr>
+  <!-- Management (collapsible) -->
+  <details class="manage" id="manage" {{ 'open' if edit_doctor }}>
+    <summary>⚙️ Einstellungen &amp; Ärzte verwalten</summary>
+
+    <div class="card">
+      <h2>Globale Einstellungen</h2>
+      <form method="post" action="{{ base_path }}/settings" class="inline-form">
+        <label>Prüfintervall (Minuten)
+          <input type="number" name="interval_minutes" min="5" max="1440"
+                 value="{{ interval_minutes }}" required>
+        </label>
+        <label>Benachrichtigungsdienst
+          <input type="text" name="notify_service" list="notify-options"
+                 placeholder="{{ notify_default }}" value="{{ notify_service }}">
+        </label>
+        <button type="submit" class="btn">Speichern</button>
+        <button type="submit" class="btn btn-secondary"
+                formaction="{{ base_path }}/notify/test">Test senden</button>
+      </form>
+      <datalist id="notify-options">
+        <option value="persistent_notification">
+        <option value="notify.iphone_max">
+      </datalist>
+      <p class="hint">
+        Entweder ein klassischer Notify-<strong>Dienst</strong> ohne Präfix
+        (z. B. <code>mobile_app_dein_handy</code>) oder eine Notify-<strong>Entität</strong>
+        mit Präfix (z. B. <code>notify.iphone_max</code>). Den genauen Namen findest du unter
+        <em>Entwicklerwerkzeuge → Aktionen/Zustände</em>. Leer = Add-on-Option
+        (<code>{{ notify_default }}</code>).
+      </p>
+      <p class="hint">API-Basis: <code>{{ base_url }}</code></p>
+    </div>
+
+    <div class="card">
+      <h2>{{ 'Arzt bearbeiten' if edit_doctor else 'Arzt hinzufügen' }}</h2>
+      {% if not edit_doctor %}
+      <p class="hint">
+        Tipp: samedi-Buchungs-URL (<code>termin.samedi.de/b/…</code>) einfügen –
+        die IDs werden automatisch aufgelöst.
+      </p>
+      {% endif %}
+      <form method="post" action="{{ base_path }}/doctors" class="grid-form">
+        <input type="hidden" name="id" value="{{ edit_doctor.id if edit_doctor else '' }}">
+        <label>Name / Bezeichnung
+          <input type="text" name="name" placeholder="Dr. Müller – ADHS Erstgespräch"
+                 value="{{ edit_doctor.name if edit_doctor else '' }}" required>
+        </label>
+        {% if not edit_doctor %}
+        <label>samedi-Buchungs-URL <span class="opt">(optional, füllt die IDs)</span>
+          <input type="text" name="booking_url"
+                 placeholder="https://termin.samedi.de/b/…?insuranceId=public">
+        </label>
         {% endif %}
-        {% endfor %}
-      </tbody>
-    </table>
-    {% endif %}
-  </section>
+        <label>event_category_id
+          <input type="text" name="event_category_id"
+                 value="{{ edit_doctor.event_category_id if edit_doctor else '' }}">
+        </label>
+        <label>event_type_id
+          <input type="text" name="event_type_id"
+                 value="{{ edit_doctor.event_type_id if edit_doctor else '' }}">
+        </label>
+        <label>insurance_id <span class="opt">(z. B. <code>public</code>)</span>
+          <input type="text" name="insurance_id"
+                 value="{{ edit_doctor.insurance_id if edit_doctor else 'public' }}">
+        </label>
+        <label>Vorausschau (Tage)
+          <input type="number" name="days_ahead" min="1" max="365"
+                 value="{{ edit_doctor.days_ahead if edit_doctor else 90 }}">
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" name="enabled"
+                 {{ 'checked' if (not edit_doctor) or edit_doctor.enabled else '' }}>
+          Aktiv
+        </label>
+        <div class="actions">
+          <button type="submit" class="btn">{{ 'Aktualisieren' if edit_doctor else 'Hinzufügen' }}</button>
+          {% if edit_doctor %}<a class="btn btn-link" href="{{ base_path }}/">Abbrechen</a>{% endif %}
+        </div>
+      </form>
+    </div>
+  </details>
 </main>
 
 <footer>
   <p class="muted">
     Liest nur öffentlich verfügbare Verfügbarkeiten – es wird nichts gebucht.
-    IDs findest du in den Netzwerk-Requests der samedi-Buchungsseite.
   </p>
 </footer>
+
+<script>
+(function () {
+  var el = document.getElementById('countdown');
+  if (!el) return;
+  var next = el.getAttribute('data-next');
+  if (!next) { el.textContent = '–'; return; }
+  var target = new Date(next).getTime();
+  function tick() {
+    var diff = Math.floor((target - Date.now()) / 1000);
+    if (diff <= 0) { el.textContent = 'jetzt'; setTimeout(function(){ location.reload(); }, 4000); return; }
+    var m = Math.floor(diff / 60), s = diff % 60;
+    el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+    setTimeout(tick, 1000);
+  }
+  tick();
+})();
+</script>
 </body>
 </html>

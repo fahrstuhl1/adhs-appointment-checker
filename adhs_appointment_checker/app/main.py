@@ -80,19 +80,79 @@ def index():
     state = store.load_state()
     edit_id = request.args.get("edit")
     edit_doctor = store.get_doctor(edit_id) if edit_id else None
+
+    items, summary = _build_overview(doctors, state)
+
     return render_template(
         "index.html",
         base_path=_base_path(),
         interval_minutes=store.get_interval_minutes(),
         base_url=samedi.base_url(),
-        doctors=doctors,
-        state=state,
+        items=items,
+        summary=summary,
         edit_doctor=edit_doctor,
         notify_service=store.get_notify_service(),
         notify_default=notify.env_default_service(),
         error=request.args.get("error"),
         notice=request.args.get("notice"),
     )
+
+
+def _status_of(doctor: dict, s: dict) -> str:
+    """Classify a doctor row: available / error / none / unknown / disabled."""
+    if not doctor.get("enabled", True):
+        return "disabled"
+    status = s.get("status")
+    if status == "ok" and (s.get("available_count") or 0) > 0:
+        return "available"
+    if status == "error":
+        return "error"
+    if status == "ok":
+        return "none"
+    return "unknown"
+
+
+def _build_overview(doctors: list[dict], state: dict):
+    """Return (sorted items, summary) for the dashboard.
+
+    Items are sorted so the most actionable rows come first: available, then
+    errors, then 'no slots', unknown and finally disabled; within a group by
+    earliest day and name.
+    """
+    order = {"available": 0, "error": 1, "none": 2, "unknown": 3, "disabled": 4}
+    items = []
+    for doctor in doctors:
+        s = state.get(doctor["id"], {})
+        status = _status_of(doctor, s)
+        items.append({"doctor": doctor, "s": s, "status": status})
+
+    items.sort(
+        key=lambda it: (
+            order[it["status"]],
+            it["s"].get("earliest_day") or "9999-12-31",
+            (it["doctor"].get("name") or "").lower(),
+        )
+    )
+
+    checked_times = [it["s"].get("checked_at") for it in items if it["s"].get("checked_at")]
+    summary = {
+        "total": len(doctors),
+        "monitored": sum(1 for d in doctors if d.get("enabled", True)),
+        "available": sum(1 for it in items if it["status"] == "available"),
+        "errors": sum(1 for it in items if it["status"] == "error"),
+        "none": sum(1 for it in items if it["status"] == "none"),
+        "last_checked": max(checked_times) if checked_times else None,
+        "next_check": _next_check_iso(),
+    }
+    return items, summary
+
+
+def _next_check_iso() -> str | None:
+    job = scheduler.get_job(_JOB_ID)
+    if job and job.next_run_time:
+        return job.next_run_time.isoformat()
+    return None
+
 
 
 @app.post("/settings")
