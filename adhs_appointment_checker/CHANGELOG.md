@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+
+- Fix: pre-configured doctors now also appear on installs **upgraded** from an
+  earlier version (where `config.json` already existed with no doctors). A
+  one-time seeding migration adds any missing seed doctors; later deletions are
+  respected.
+
 ## 0.3.0
 
 - Version bump so Home Assistant detects the update. No functional changes

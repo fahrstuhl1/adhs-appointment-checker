@@ -50,11 +50,10 @@ def _seed_doctors() -> list[dict[str, Any]]:
     return [_normalize_doctor({**base, **seed}) for seed in seeds]
 
 
-def _default_config() -> dict[str, Any]:
-    return {
-        "interval_minutes": _default_interval(),
-        "doctors": _seed_doctors(),
-    }
+# Bumping this re-runs the one-time seeding migration below, adding any seed
+# doctors that are not already present. User deletions are respected because the
+# marker is stored once the migration has run.
+SEED_VERSION = 1
 
 
 def _read_json(path: str, default: Any) -> Any:
@@ -78,12 +77,28 @@ def _write_json(path: str, data: Any) -> None:
 # --------------------------------------------------------------------------- #
 def load_config() -> dict[str, Any]:
     with _LOCK:
-        cfg = _read_json(CONFIG_PATH, None)
-        if not cfg:
-            cfg = _default_config()
+        cfg = _read_json(CONFIG_PATH, None) or {}
+        changed = False
+
+        if "interval_minutes" not in cfg:
+            cfg["interval_minutes"] = _default_interval()
+            changed = True
+        if "doctors" not in cfg:
+            cfg["doctors"] = []
+            changed = True
+
+        # One-time seeding migration: also fixes installs upgraded from an
+        # earlier version whose config.json already existed with no doctors.
+        if int(cfg.get("seed_version", 0) or 0) < SEED_VERSION:
+            existing_types = {d.get("event_type_id") for d in cfg["doctors"]}
+            for seed in _seed_doctors():
+                if seed["event_type_id"] not in existing_types:
+                    cfg["doctors"].append(seed)
+            cfg["seed_version"] = SEED_VERSION
+            changed = True
+
+        if changed:
             _write_json(CONFIG_PATH, cfg)
-        cfg.setdefault("interval_minutes", _default_interval())
-        cfg.setdefault("doctors", [])
         return cfg
 
 
