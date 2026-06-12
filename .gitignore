@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+# Local development data (persistent storage is /config inside the add-on)
+adhs_appointment_checker/data/
+*.tmp
