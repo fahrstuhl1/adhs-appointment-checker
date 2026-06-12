@@ -128,5 +128,46 @@ footer { max-width: 1000px; margin: 0 auto 2rem; padding: 0 1rem; }
 footer .muted { font-size: .82rem; }
 
 @media (max-width: 640px) {
+  main { padding: 0 .6rem; }
+  .card { padding: 1rem .9rem; }
   .grid-form { grid-template-columns: 1fr; }
+  .inline-form { gap: .6rem; }
+  .inline-form input { width: 100%; }
+  .inline-form label { width: 100%; }
+
+  /* Turn the results table into stacked cards so nothing scrolls off-screen. */
+  table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  table, tbody, tr, td { display: block; width: 100%; }
+  tbody tr {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: .5rem .7rem;
+    margin-bottom: .8rem;
+    background: #fff;
+  }
+  tbody tr.error-row { border: none; padding: 0 .2rem .6rem; margin-top: -.6rem; }
+  tbody td {
+    border: none;
+    padding: .3rem 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    text-align: right;
+  }
+  tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--muted);
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    text-align: left;
+    flex: 0 0 auto;
+  }
+  tbody td.row-actions { display: flex; flex-direction: row; flex-wrap: wrap; min-width: 0; }
+  tbody td.row-actions::before { width: 100%; margin-bottom: .2rem; }
+  .row-actions .btn-mini { width: auto; flex: 1 1 auto; }
+  .days { text-align: right; }
+  .nowrap { white-space: normal; }
 }

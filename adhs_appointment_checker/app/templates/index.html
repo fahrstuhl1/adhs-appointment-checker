@@ -122,11 +122,11 @@
         {% for doctor in doctors %}
         {% set s = state.get(doctor.id, {}) %}
         <tr class="{{ 'disabled' if not doctor.enabled else '' }}">
-          <td>
+          <td data-label="Name">
             <strong>{{ doctor.name }}</strong>
             {% if not doctor.enabled %}<span class="badge badge-off">inaktiv</span>{% endif %}
           </td>
-          <td>
+          <td data-label="Status">
             {% if s.status == 'ok' and s.available_count and s.available_count > 0 %}
               <span class="badge badge-ok">verfügbar</span>
             {% elif s.status == 'ok' %}
@@ -137,8 +137,8 @@
               <span class="badge badge-unknown">—</span>
             {% endif %}
           </td>
-          <td>{{ s.earliest_day or '–' }}</td>
-          <td>
+          <td data-label="Frühester Termin">{{ s.earliest_day or '–' }}</td>
+          <td data-label="Freie Tage">
             {% if s.available_count is not none %}
               {{ s.available_count }} Tag(e){% if s.slot_count %}, {{ s.slot_count }} Slot(s){% endif %}
             {% else %}–{% endif %}
@@ -146,8 +146,8 @@
               <div class="days">{{ s.available_days[:8] | join(', ') }}{% if s.available_days|length > 8 %} …{% endif %}</div>
             {% endif %}
           </td>
-          <td class="muted nowrap">{{ s.checked_at | dt }}</td>
-          <td class="row-actions">
+          <td data-label="Zuletzt geprüft" class="muted nowrap">{{ s.checked_at | dt }}</td>
+          <td data-label="Aktionen" class="row-actions">
             <form method="post" action="{{ base_path }}/doctors/{{ doctor.id }}/check">
               <button class="btn btn-mini" type="submit">Prüfen</button>
             </form>

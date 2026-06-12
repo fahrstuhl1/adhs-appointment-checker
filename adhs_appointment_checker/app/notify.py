@@ -58,9 +58,23 @@ def send(title: str, message: str, service: str | None = None) -> str | None:
         return f"Anfrage fehlgeschlagen: {exc}"
 
     if response.status_code >= 400:
-        snippet = response.text[:160].replace("\n", " ")
-        LOGGER.warning("notify.%s failed: HTTP %s %s", service, response.status_code, snippet)
-        return f"notify.{service} fehlgeschlagen: HTTP {response.status_code} {snippet}"
+        # Home Assistant usually returns the real reason as JSON {"message": ...}.
+        detail = response.text[:200].replace("\n", " ").strip()
+        try:
+            body = response.json()
+            if isinstance(body, dict) and body.get("message"):
+                detail = str(body["message"])
+        except ValueError:
+            pass
+        hint = ""
+        if response.status_code == 400:
+            hint = (
+                f" — Der Dienst „notify.{service}“ existiert vermutlich nicht. "
+                "Prüfe den genauen Namen unter Entwicklerwerkzeuge → Aktionen "
+                "(meist „mobile_app_<gerät>“, z. B. mobile_app_iphone_max)."
+            )
+        LOGGER.warning("notify.%s failed: HTTP %s %s", service, response.status_code, detail)
+        return f"notify.{service} fehlgeschlagen: HTTP {response.status_code}: {detail}{hint}"
 
     LOGGER.info("Notification sent via notify.%s", service)
     return None

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0
+
+- Mobile UI: the results table now collapses into stacked, labelled cards on
+  narrow screens, so the action buttons (Prüfen/Bearbeiten/Löschen) are no
+  longer pushed off-screen in portrait mode.
+- Clearer notification errors: surface Home Assistant's actual JSON error
+  message and, on HTTP 400, hint that the service name is likely wrong
+  (mobile-app services are named `mobile_app_<device>`).
+
 ## 0.6.0
 
 - Configure the notification service **in the web UI** (Globale Einstellungen →
