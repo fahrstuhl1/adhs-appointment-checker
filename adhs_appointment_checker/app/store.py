@@ -1,0 +1,171 @@
+"""Persistent storage for configuration and last results.
+
+State is kept as JSON files inside the add-on's persistent data directory
+(``DATA_DIR``, defaults to ``/config`` inside the container, or ``./data`` when
+running locally for development).
+
+Two files are used:
+
+* ``config.json`` — user configuration: global settings + list of doctors.
+* ``state.json``  — the last check result per doctor (volatile-ish data).
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import threading
+import uuid
+from typing import Any
+
+_LOCK = threading.RLock()
+
+DATA_DIR = os.environ.get("DATA_DIR", os.path.join(os.path.dirname(__file__), "..", "data"))
+CONFIG_PATH = os.path.join(DATA_DIR, "config.json")
+STATE_PATH = os.path.join(DATA_DIR, "state.json")
+
+
+def _default_interval() -> int:
+    try:
+        return int(os.environ.get("DEFAULT_INTERVAL_MINUTES", "60"))
+    except (TypeError, ValueError):
+        return 60
+
+
+def _default_config() -> dict[str, Any]:
+    return {
+        "interval_minutes": _default_interval(),
+        "doctors": [],
+    }
+
+
+def _read_json(path: str, default: Any) -> Any:
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return default
+
+
+def _write_json(path: str, data: Any) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = f"{path}.tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2, ensure_ascii=False)
+    os.replace(tmp, path)
+
+
+# --------------------------------------------------------------------------- #
+# Configuration
+# --------------------------------------------------------------------------- #
+def load_config() -> dict[str, Any]:
+    with _LOCK:
+        cfg = _read_json(CONFIG_PATH, None)
+        if not cfg:
+            cfg = _default_config()
+            _write_json(CONFIG_PATH, cfg)
+        cfg.setdefault("interval_minutes", _default_interval())
+        cfg.setdefault("doctors", [])
+        return cfg
+
+
+def save_config(cfg: dict[str, Any]) -> None:
+    with _LOCK:
+        _write_json(CONFIG_PATH, cfg)
+
+
+def get_interval_minutes() -> int:
+    cfg = load_config()
+    try:
+        value = int(cfg.get("interval_minutes", _default_interval()))
+    except (TypeError, ValueError):
+        value = _default_interval()
+    return max(5, min(value, 1440))
+
+
+def set_interval_minutes(minutes: int) -> None:
+    with _LOCK:
+        cfg = load_config()
+        cfg["interval_minutes"] = max(5, min(int(minutes), 1440))
+        save_config(cfg)
+
+
+def list_doctors() -> list[dict[str, Any]]:
+    return load_config().get("doctors", [])
+
+
+def get_doctor(doctor_id: str) -> dict[str, Any] | None:
+    for doctor in list_doctors():
+        if doctor.get("id") == doctor_id:
+            return doctor
+    return None
+
+
+def _normalize_doctor(data: dict[str, Any]) -> dict[str, Any]:
+    def _clean_int(value: Any, fallback: int) -> int:
+        try:
+            return int(str(value).strip())
+        except (TypeError, ValueError):
+            return fallback
+
+    return {
+        "id": data.get("id") or uuid.uuid4().hex,
+        "name": (data.get("name") or "").strip() or "Unnamed doctor",
+        "client_id": (data.get("client_id") or "").strip(),
+        "event_category_id": (data.get("event_category_id") or "").strip(),
+        "event_type_id": (data.get("event_type_id") or "").strip(),
+        "insurance_id": (data.get("insurance_id") or "").strip(),
+        "days_ahead": max(1, min(_clean_int(data.get("days_ahead"), 90), 365)),
+        "enabled": bool(data.get("enabled", True)),
+    }
+
+
+def upsert_doctor(data: dict[str, Any]) -> dict[str, Any]:
+    with _LOCK:
+        cfg = load_config()
+        doctor = _normalize_doctor(data)
+        doctors = cfg.get("doctors", [])
+        for index, existing in enumerate(doctors):
+            if existing.get("id") == doctor["id"]:
+                doctors[index] = doctor
+                break
+        else:
+            doctors.append(doctor)
+        cfg["doctors"] = doctors
+        save_config(cfg)
+        return doctor
+
+
+def delete_doctor(doctor_id: str) -> None:
+    with _LOCK:
+        cfg = load_config()
+        cfg["doctors"] = [d for d in cfg.get("doctors", []) if d.get("id") != doctor_id]
+        save_config(cfg)
+        state = load_state()
+        if doctor_id in state:
+            del state[doctor_id]
+            save_state(state)
+
+
+# --------------------------------------------------------------------------- #
+# State (last results)
+# --------------------------------------------------------------------------- #
+def load_state() -> dict[str, Any]:
+    with _LOCK:
+        return _read_json(STATE_PATH, {}) or {}
+
+
+def save_state(state: dict[str, Any]) -> None:
+    with _LOCK:
+        _write_json(STATE_PATH, state)
+
+
+def get_doctor_state(doctor_id: str) -> dict[str, Any]:
+    return load_state().get(doctor_id, {})
+
+
+def set_doctor_state(doctor_id: str, result: dict[str, Any]) -> None:
+    with _LOCK:
+        state = load_state()
+        state[doctor_id] = result
+        save_state(state)

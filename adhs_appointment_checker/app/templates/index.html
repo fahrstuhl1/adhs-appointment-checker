@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ADHS Appointment Checker</title>
+  <link rel="stylesheet" href="{{ base_path }}/static/style.css">
+</head>
+<body>
+<header>
+  <h1>🧠 ADHS Appointment Checker</h1>
+  <p class="subtitle">Stündliche samedi.de-Verfügbarkeitsprüfung für ADHS-Termine</p>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Globale Einstellungen</h2>
+    <form method="post" action="{{ base_path }}/settings" class="inline-form">
+      <label>
+        Prüfintervall (Minuten)
+        <input type="number" name="interval_minutes" min="5" max="1440"
+               value="{{ interval_minutes }}" required>
+      </label>
+      <button type="submit" class="btn">Speichern</button>
+      <span class="hint">API-Basis: <code>{{ base_url }}</code></span>
+    </form>
+    <form method="post" action="{{ base_path }}/check" class="inline-form">
+      <button type="submit" class="btn btn-secondary">Jetzt alle prüfen</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>{{ 'Arzt bearbeiten' if edit_doctor else 'Arzt hinzufügen' }}</h2>
+    <form method="post" action="{{ base_path }}/doctors" class="grid-form">
+      <input type="hidden" name="id" value="{{ edit_doctor.id if edit_doctor else '' }}">
+      <label>Name / Bezeichnung
+        <input type="text" name="name" placeholder="Dr. Müller – ADHS Erstgespräch"
+               value="{{ edit_doctor.name if edit_doctor else '' }}" required>
+      </label>
+      <label>client_id
+        <input type="text" name="client_id"
+               value="{{ edit_doctor.client_id if edit_doctor else '' }}" required>
+      </label>
+      <label>event_category_id
+        <input type="text" name="event_category_id"
+               value="{{ edit_doctor.event_category_id if edit_doctor else '' }}" required>
+      </label>
+      <label>event_type_id
+        <input type="text" name="event_type_id"
+               value="{{ edit_doctor.event_type_id if edit_doctor else '' }}" required>
+      </label>
+      <label>insurance_id <span class="opt">(optional)</span>
+        <input type="text" name="insurance_id"
+               value="{{ edit_doctor.insurance_id if edit_doctor else '' }}">
+      </label>
+      <label>Vorausschau (Tage)
+        <input type="number" name="days_ahead" min="1" max="365"
+               value="{{ edit_doctor.days_ahead if edit_doctor else 90 }}">
+      </label>
+      <label class="checkbox">
+        <input type="checkbox" name="enabled"
+               {{ 'checked' if (not edit_doctor) or edit_doctor.enabled else '' }}>
+        Aktiv
+      </label>
+      <div class="actions">
+        <button type="submit" class="btn">{{ 'Aktualisieren' if edit_doctor else 'Hinzufügen' }}</button>
+        {% if edit_doctor %}
+        <a class="btn btn-link" href="{{ base_path }}/">Abbrechen</a>
+        {% endif %}
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Ärzte &amp; letztes Ergebnis</h2>
+    {% if not doctors %}
+      <p class="empty">Noch keine Ärzte konfiguriert. Füge oben einen hinzu.</p>
+    {% else %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Status</th>
+          <th>Frühester Termin</th>
+          <th>Freie Tage</th>
+          <th>Zuletzt geprüft</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for doctor in doctors %}
+        {% set s = state.get(doctor.id, {}) %}
+        <tr class="{{ 'disabled' if not doctor.enabled else '' }}">
+          <td>
+            <strong>{{ doctor.name }}</strong>
+            {% if not doctor.enabled %}<span class="badge badge-off">inaktiv</span>{% endif %}
+          </td>
+          <td>
+            {% if s.status == 'ok' and s.available_count and s.available_count > 0 %}
+              <span class="badge badge-ok">verfügbar</span>
+            {% elif s.status == 'ok' %}
+              <span class="badge badge-none">keine</span>
+            {% elif s.status == 'error' %}
+              <span class="badge badge-err" title="{{ s.error }}">Fehler</span>
+            {% else %}
+              <span class="badge badge-unknown">—</span>
+            {% endif %}
+          </td>
+          <td>{{ s.earliest_day or '–' }}</td>
+          <td>
+            {{ s.available_count if s.available_count is not none else '–' }}
+            {% if s.available_days %}
+              <div class="days">{{ s.available_days[:8] | join(', ') }}{% if s.available_days|length > 8 %} …{% endif %}</div>
+            {% endif %}
+          </td>
+          <td class="muted">{{ s.checked_at or 'nie' }}</td>
+          <td class="row-actions">
+            <form method="post" action="{{ base_path }}/doctors/{{ doctor.id }}/check">
+              <button class="btn btn-mini" type="submit">Prüfen</button>
+            </form>
+            <a class="btn btn-mini btn-link" href="{{ base_path }}/?edit={{ doctor.id }}">Bearbeiten</a>
+            <form method="post" action="{{ base_path }}/doctors/{{ doctor.id }}/delete"
+                  onsubmit="return confirm('Diesen Arzt wirklich löschen?');">
+              <button class="btn btn-mini btn-danger" type="submit">Löschen</button>
+            </form>
+          </td>
+        </tr>
+        {% if s.status == 'error' and s.error %}
+        <tr class="error-row"><td colspan="6"><span class="muted">⚠ {{ s.error }}</span></td></tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </section>
+</main>
+
+<footer>
+  <p class="muted">
+    Liest nur öffentlich verfügbare Verfügbarkeiten – es wird nichts gebucht.
+    IDs findest du in den Netzwerk-Requests der samedi-Buchungsseite.
+  </p>
+</footer>
+</body>
+</html>
