@@ -31,19 +31,22 @@ def check_doctor(doctor: dict[str, Any]) -> dict[str, Any]:
     }
 
     try:
-        days = samedi.fetch_available_days(doctor)
+        availability = samedi.fetch_availability(doctor)
+        days = availability["days"]
         result.update(
             {
                 "status": "ok",
                 "available_days": days,
                 "available_count": len(days),
+                "slot_count": availability["slot_count"],
                 "earliest_day": days[0] if days else None,
                 "error": None,
             }
         )
         LOGGER.info(
-            "Checked '%s': %d available day(s)%s",
+            "Checked '%s': %d slot(s) on %d day(s)%s",
             doctor.get("name"),
+            availability["slot_count"],
             len(days),
             f", earliest {days[0]}" if days else "",
         )
@@ -54,6 +57,7 @@ def check_doctor(doctor: dict[str, Any]) -> dict[str, Any]:
                 # Preserve last known availability so the UI keeps showing it.
                 "available_days": previous.get("available_days", []),
                 "available_count": prev_count,
+                "slot_count": previous.get("slot_count", 0),
                 "earliest_day": prev_earliest,
                 "error": str(exc),
             }

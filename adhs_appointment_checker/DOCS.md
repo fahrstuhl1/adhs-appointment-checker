@@ -27,21 +27,42 @@ and stored persistently in the add-on's `/config` directory
 4. The table shows, per doctor: status, earliest free day, number of free days,
    and the last-checked timestamp.
 
-## Finding `client_id`, `event_category_id`, `event_type_id`
+## Pre-configured doctors
 
-These identify a practice and a specific appointment type in samedi:
+On first start the add-on seeds three entries for the **Praxis Viola Berg**
+ADHS-Diagnostik (gesetzlich versichert):
 
-1. Open the doctor's online booking page in a desktop browser.
+| Name | event_category_id | event_type_id |
+| --- | --- | --- |
+| Viola Berg | 127359 | 338226 |
+| Susann Bergmann | 139923 | 399111 |
+| Melanie Scholz | 139924 | 399114 |
+
+You can edit or delete these in the web UI.
+
+## Adding a doctor from a booking URL (easiest)
+
+In the **Arzt hinzufügen** form, paste the samedi booking link
+(`https://termin.samedi.de/b/<practice>/<n>/<doctor>/<type>?insuranceId=public`)
+into the **samedi-Buchungs-URL** field and submit. The add-on resolves the
+`event_category_id` / `event_type_id` (and `insurance_id`) automatically via the
+samedi `practices/slug_to_id` endpoint.
+
+## Adding a doctor manually
+
+The `termin.samedi.de` widget queries the samedi Booking API v3
+`GET /times?event_category_id=…&event_type_id=…&insurance_id=…&from=…&to=…`,
+authenticated with the public widget's `client_id` + `api_key` (shipped as
+add-on options). To find the IDs by hand:
+
+1. Open the doctor's booking page in a desktop browser.
 2. Open **Developer Tools → Network** (Ctrl/Cmd+Shift+I).
-3. Begin a booking and select the relevant appointment category and type.
-4. Look for requests to `patient.samedi.de/api/booking/v3/days` (or `/times`).
-   Their query string contains `client_id`, `event_category_id` and
-   `event_type_id`.
-5. Copy those values into a doctor entry.
+3. Select the appointment category/type and watch for a request to
+   `patient.samedi.de/api/booking/v3/times` — its query string contains
+   `event_category_id`, `event_type_id` and `insurance_id`.
+4. Copy those into a doctor entry.
 
-`insurance_id` is optional and only needed if the practice filters appointment
-types by health insurance. The insurance list is available at
-`/insurances?client_id=…`.
+`insurance_id` is usually `public` for statutory ("gesetzlich") insurance.
 
 ## Notifications
 

@@ -1,5 +1,5 @@
 name: ADHS Appointment Checker
-version: "0.1.0"
+version: "0.2.0"
 slug: adhs_appointment_checker
 description: >-
   Periodically checks samedi.de for available ADHS appointment slots, with a web
@@ -26,9 +26,13 @@ options:
   log_level: info
   default_interval_minutes: 60
   base_url: https://patient.samedi.de/api/booking/v3
+  client_id: 8f0hsw1v0x676r5pqbf4fecv3fo7s5l
+  api_key: TESTING
   notify_service: persistent_notification
 schema:
   log_level: list(trace|debug|info|notice|warning|error|fatal)
   default_interval_minutes: int(5,1440)
   base_url: str
+  client_id: str
+  api_key: str
   notify_service: str

@@ -32,10 +32,28 @@ def _default_interval() -> int:
         return 60
 
 
+def _seed_doctors() -> list[dict[str, Any]]:
+    """Practices pre-configured on first run (Praxis Viola Berg, ADHS-Diagnostik)."""
+    base = {
+        "insurance_id": "public",
+        "days_ahead": 90,
+        "enabled": True,
+    }
+    seeds = [
+        {"name": "Viola Berg – ADHS-Diagnostik (GKV)",
+         "event_category_id": "127359", "event_type_id": "338226"},
+        {"name": "Susann Bergmann – ADHS-Diagnostik (GKV)",
+         "event_category_id": "139923", "event_type_id": "399111"},
+        {"name": "Melanie Scholz – ADHS-Diagnostik (GKV)",
+         "event_category_id": "139924", "event_type_id": "399114"},
+    ]
+    return [_normalize_doctor({**base, **seed}) for seed in seeds]
+
+
 def _default_config() -> dict[str, Any]:
     return {
         "interval_minutes": _default_interval(),
-        "doctors": [],
+        "doctors": _seed_doctors(),
     }
 
 
@@ -112,8 +130,10 @@ def _normalize_doctor(data: dict[str, Any]) -> dict[str, Any]:
         "id": data.get("id") or uuid.uuid4().hex,
         "name": (data.get("name") or "").strip() or "Unnamed doctor",
         "client_id": (data.get("client_id") or "").strip(),
-        "event_category_id": (data.get("event_category_id") or "").strip(),
-        "event_type_id": (data.get("event_type_id") or "").strip(),
+        "api_key": (data.get("api_key") or "").strip(),
+        "practice_id": (data.get("practice_id") or "").strip(),
+        "event_category_id": str(data.get("event_category_id") or "").strip(),
+        "event_type_id": str(data.get("event_type_id") or "").strip(),
         "insurance_id": (data.get("insurance_id") or "").strip(),
         "days_ahead": max(1, min(_clean_int(data.get("days_ahead"), 90), 365)),
         "enabled": bool(data.get("enabled", True)),

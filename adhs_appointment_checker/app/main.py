@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from urllib.parse import quote
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, redirect, render_template, request
@@ -74,6 +75,7 @@ def index():
         doctors=doctors,
         state=state,
         edit_doctor=edit_doctor,
+        error=request.args.get("error"),
     )
 
 
@@ -93,13 +95,26 @@ def save_doctor():
     data = {
         "id": request.form.get("id") or None,
         "name": request.form.get("name"),
-        "client_id": request.form.get("client_id"),
         "event_category_id": request.form.get("event_category_id"),
         "event_type_id": request.form.get("event_type_id"),
         "insurance_id": request.form.get("insurance_id"),
         "days_ahead": request.form.get("days_ahead"),
         "enabled": request.form.get("enabled") == "on",
     }
+
+    booking_url = (request.form.get("booking_url") or "").strip()
+    if booking_url and not (data["event_category_id"] and data["event_type_id"]):
+        try:
+            resolved = samedi.resolve_booking_url(booking_url)
+            data["event_category_id"] = resolved["event_category_id"]
+            data["event_type_id"] = resolved["event_type_id"]
+            data["practice_id"] = resolved["practice_id"]
+            if resolved["insurance_id"] and not data["insurance_id"]:
+                data["insurance_id"] = resolved["insurance_id"]
+        except samedi.SamediError as exc:
+            LOGGER.warning("Could not resolve booking URL: %s", exc)
+            return redirect(f"{_base_path()}/?error={quote(str(exc))}")
+
     store.upsert_doctor(data)
     return redirect(f"{_base_path()}/")
 

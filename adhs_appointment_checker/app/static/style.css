@@ -113,6 +113,9 @@ tr.error-row td { border-bottom: 1px solid var(--border); padding-top: 0; }
 .badge-off { background: #eceff1; color: var(--off); }
 .badge-unknown { background: var(--none-bg); color: var(--muted); }
 
+.banner { padding: .7rem 1rem; border-radius: 10px; margin-bottom: 1rem; font-size: .9rem; }
+.banner-err { background: var(--err-bg); color: var(--err); border: 1px solid #f3c4c0; }
+
 .days { color: var(--muted); font-size: .78rem; margin-top: .15rem; }
 .muted { color: var(--muted); }
 .empty { color: var(--muted); font-style: italic; }

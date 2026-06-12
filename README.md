@@ -20,20 +20,26 @@ It ships a small **web UI** (via Home Assistant Ingress) to:
 
 ## How it works
 
-samedi powers the online booking widget on many German practice websites. Its
-public Booking API (v3, base `https://patient.samedi.de/api/booking/v3`)
-exposes read-only endpoints for appointment availability:
+samedi powers the online booking widget (`termin.samedi.de`) on many German
+practice websites. It talks to the Booking API v3 (base
+`https://patient.samedi.de/api/booking/v3`), authenticated with the public
+widget's `client_id` + `api_key`. The add-on uses the same read-only endpoints:
 
-- `GET /days?client_id=…&event_category_id=…&event_type_id=…&from=…&to=…`
-  → the days that currently have free slots,
-- `GET /times?client_id=…&event_category_id=…&event_type_id=…&date=…`
-  → the concrete time slots on a given day,
-- `GET /insurances?client_id=…` → list of health insurances.
+- `GET /practices/slug_to_id?practice_slug=…&event_category_slug=…&event_type_slug=…`
+  → resolves a booking link to numeric IDs,
+- `GET /times?event_category_id=…&event_type_id=…&insurance_id=…&from=…&to=…`
+  → the concrete free time slots in a date range.
 
-The add-on polls the `/days` endpoint for each configured doctor over your
-chosen date window and records the result. When a doctor that previously had
-**no** free days suddenly has some — or when the **earliest** free day moves
-closer — it fires a notification.
+The add-on polls `/times` for each configured doctor over your chosen date
+window and records the result (free days + slot count). When a doctor that
+previously had **no** free days suddenly has some — or when the **earliest**
+free day moves closer — it fires a notification.
+
+### Pre-configured for Praxis Viola Berg (ADHS-Diagnostik, GKV)
+
+On first run, three doctors are seeded out of the box — **Viola Berg**,
+**Susann Bergmann** and **Melanie Scholz** — for the statutory-insurance ADHS
+diagnostics appointments. Edit or remove them in the web UI as you like.
 
 ## Installation
 
@@ -48,13 +54,13 @@ See [`adhs_appointment_checker/DOCS.md`](adhs_appointment_checker/DOCS.md) for
 configuration details, including how to find a practice's `client_id`,
 `event_category_id` and `event_type_id`.
 
-## Finding the IDs of a doctor
+## Adding more doctors
 
-Open the practice's online booking page in your browser, open the developer
-tools **Network** tab, and start a booking. You will see requests to
-`patient.samedi.de/api/booking/v3/…` containing `client_id`,
-`event_category_id` and `event_type_id` as query parameters. Copy those into a
-doctor entry in the web UI.
+The easiest way: paste a samedi booking link
+(`https://termin.samedi.de/b/…?insuranceId=public`) into the **samedi-Buchungs-URL**
+field of the add form — the add-on resolves the IDs automatically. See
+[`adhs_appointment_checker/DOCS.md`](adhs_appointment_checker/DOCS.md) for the
+manual route (DevTools → Network → `…/api/booking/v3/times`).
 
 ## Disclaimer
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0
+
+- Use the samedi `/times` endpoint (with the public booking-widget
+  `client_id` + `api_key`) as used by `termin.samedi.de`, instead of `/days`.
+- Pre-seed three doctors for Praxis Viola Berg (ADHS-Diagnostik, GKV):
+  Viola Berg, Susann Bergmann, Melanie Scholz.
+- Add doctors directly from a `termin.samedi.de/b/...` booking URL — IDs are
+  resolved automatically via `practices/slug_to_id`.
+- Show slot count in addition to free days; configurable `client_id` / `api_key`.
+
 ## 0.1.0
 
 - Initial release.
