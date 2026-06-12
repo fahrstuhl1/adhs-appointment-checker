@@ -99,7 +99,16 @@ def _get(path: str, params: dict[str, Any]) -> Any:
 
 
 def _slots_from_payload(payload: Any) -> list[str]:
-    """Return ISO datetime strings of slots from a ``/times`` response."""
+    """Return ISO datetime strings of slots from a ``/times`` response.
+
+    Verified live response shape (a practice with free slots)::
+
+        {"data": [{"time": "2026-06-15T10:00:00+02:00", "token": "..."}, ...]}
+
+    Each slot element carries a ``time`` field (the same value the widget sends
+    back as ``starts_at`` when booking). We key on ``time`` and fall back to
+    ``date`` / ``starts_at`` / bare strings defensively.
+    """
     if isinstance(payload, dict):
         items = payload.get("data", [])
     elif isinstance(payload, list):
