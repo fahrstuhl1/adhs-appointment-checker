@@ -9,7 +9,7 @@ from urllib.parse import quote
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, redirect, render_template, request
 
-from . import checker, samedi, store
+from . import checker, notify, samedi, store
 
 _JOB_ID = "adhs_check_all"
 
@@ -88,7 +88,10 @@ def index():
         doctors=doctors,
         state=state,
         edit_doctor=edit_doctor,
+        notify_service=store.get_notify_service(),
+        notify_default=notify.env_default_service(),
         error=request.args.get("error"),
+        notice=request.args.get("notice"),
     )
 
 
@@ -99,8 +102,23 @@ def save_settings():
     except ValueError:
         minutes = 60
     store.set_interval_minutes(minutes)
+    store.set_notify_service(request.form.get("notify_service", ""))
     reschedule()
-    return redirect(f"{_base_path()}/")
+    return redirect(f"{_base_path()}/?notice={quote('Einstellungen gespeichert.')}")
+
+
+@app.post("/notify/test")
+def test_notify():
+    # Persist the field first so the test uses what the user just typed.
+    store.set_notify_service(request.form.get("notify_service", ""))
+    error = notify.send(
+        title="ADHS Appointment Checker – Test",
+        message="Dies ist eine Test-Benachrichtigung. Wenn du das siehst, funktioniert es.",
+    )
+    if error:
+        return redirect(f"{_base_path()}/?error={quote(error)}")
+    service = notify.resolve_service()
+    return redirect(f"{_base_path()}/?notice={quote(f'Test-Benachrichtigung über notify.{service} gesendet.')}")
 
 
 @app.post("/doctors")

@@ -16,6 +16,9 @@
   {% if error %}
   <div class="banner banner-err">⚠ {{ error }}</div>
   {% endif %}
+  {% if notice %}
+  <div class="banner banner-ok">✓ {{ notice }}</div>
+  {% endif %}
 
   <section class="card">
     <h2>Globale Einstellungen</h2>
@@ -25,11 +28,27 @@
         <input type="number" name="interval_minutes" min="5" max="1440"
                value="{{ interval_minutes }}" required>
       </label>
+      <label>
+        Benachrichtigungsdienst
+        <input type="text" name="notify_service" list="notify-options"
+               placeholder="{{ notify_default }}" value="{{ notify_service }}">
+      </label>
       <button type="submit" class="btn">Speichern</button>
-      <span class="hint">API-Basis: <code>{{ base_url }}</code></span>
+      <button type="submit" class="btn btn-secondary"
+              formaction="{{ base_path }}/notify/test">Test senden</button>
     </form>
+    <datalist id="notify-options">
+      <option value="persistent_notification">
+    </datalist>
+    <p class="hint">
+      Name des HA-Dienstes <strong>ohne</strong> <code>notify.</code>-Präfix
+      (z. B. <code>mobile_app_dein_handy</code> für Push). Leer = Add-on-Option
+      (<code>{{ notify_default }}</code>). Benachrichtigt wird, wenn ein Termin
+      neu auftaucht oder früher wird.
+    </p>
     <form method="post" action="{{ base_path }}/check" class="inline-form">
       <button type="submit" class="btn btn-secondary">Jetzt alle prüfen</button>
+      <span class="hint">API-Basis: <code>{{ base_url }}</code></span>
     </form>
   </section>
 

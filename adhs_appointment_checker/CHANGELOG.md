@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0
+
+- Configure the notification service **in the web UI** (Globale Einstellungen →
+  Benachrichtigungsdienst), with a **Test senden** button that reports success
+  or the exact error. The UI value overrides the `notify_service` add-on option;
+  an empty field falls back to it.
+
 ## 0.5.0
 
 - UI: render the "last checked" timestamp as a compact German date/time

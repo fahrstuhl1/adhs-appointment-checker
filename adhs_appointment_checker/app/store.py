@@ -123,6 +123,18 @@ def set_interval_minutes(minutes: int) -> None:
         save_config(cfg)
 
 
+def get_notify_service() -> str:
+    """UI-configured notify service name, or '' to fall back to the add-on option."""
+    return (load_config().get("notify_service") or "").strip()
+
+
+def set_notify_service(service: str) -> None:
+    with _LOCK:
+        cfg = load_config()
+        cfg["notify_service"] = (service or "").strip()
+        save_config(cfg)
+
+
 def list_doctors() -> list[dict[str, Any]]:
     return load_config().get("doctors", [])
 

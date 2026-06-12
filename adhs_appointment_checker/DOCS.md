@@ -67,10 +67,14 @@ add-on options). To find the IDs by hand:
 ## Notifications
 
 When a doctor that previously had **no** free days gains availability — or when
-the **earliest** free day moves closer — the add-on sends a notification via
-`notify.<notify_service>`. With the default `persistent_notification`, alerts
-appear in the Home Assistant UI. Set `notify_service` to a mobile app notify
-service to get push notifications.
+the **earliest** free day moves closer — the add-on sends a notification.
+
+You can set the notify service **directly in the web UI** under *Globale
+Einstellungen → Benachrichtigungsdienst* and verify it with the **Test senden**
+button. Enter the Home Assistant service name **without** the `notify.` prefix,
+e.g. `persistent_notification` (alerts in the HA UI) or `mobile_app_<device>`
+(push to phone). Leaving the field empty falls back to the `notify_service`
+add-on option (default `persistent_notification`).
 
 ## Notes & limitations
 

@@ -117,6 +117,7 @@ tr.error-row td { border-bottom: 1px solid var(--border); padding-top: 0; }
 
 .banner { padding: .7rem 1rem; border-radius: 10px; margin-bottom: 1rem; font-size: .9rem; }
 .banner-err { background: var(--err-bg); color: var(--err); border: 1px solid #f3c4c0; }
+.banner-ok { background: var(--ok-bg); color: var(--ok); border: 1px solid #bfe3c6; }
 
 .days { color: var(--muted); font-size: .78rem; margin-top: .15rem; }
 .muted { color: var(--muted); }
