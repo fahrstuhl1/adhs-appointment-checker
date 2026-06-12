@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- Version bump so Home Assistant detects the update. No functional changes
+  beyond 0.2.0.
+
 ## 0.2.0
 
 - Use the samedi `/times` endpoint (with the public booking-widget
