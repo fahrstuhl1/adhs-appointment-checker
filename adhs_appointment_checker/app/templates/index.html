@@ -41,10 +41,12 @@
       <option value="persistent_notification">
     </datalist>
     <p class="hint">
-      Name des HA-Dienstes <strong>ohne</strong> <code>notify.</code>-Präfix
-      (z. B. <code>mobile_app_dein_handy</code> für Push). Leer = Add-on-Option
-      (<code>{{ notify_default }}</code>). Benachrichtigt wird, wenn ein Termin
-      neu auftaucht oder früher wird.
+      Entweder ein klassischer Notify-<strong>Dienst</strong> ohne Präfix
+      (z. B. <code>mobile_app_dein_handy</code>) oder eine Notify-<strong>Entität</strong>
+      mit Präfix (z. B. <code>notify.iphone_max</code>, neue Companion-App). Den
+      genauen Namen findest du unter <em>Entwicklerwerkzeuge → Aktionen/Zustände</em>.
+      Leer = Add-on-Option (<code>{{ notify_default }}</code>). Benachrichtigt wird,
+      wenn ein Termin neu auftaucht oder früher wird.
     </p>
     <form method="post" action="{{ base_path }}/check" class="inline-form">
       <button type="submit" class="btn btn-secondary">Jetzt alle prüfen</button>

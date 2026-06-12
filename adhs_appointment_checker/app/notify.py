@@ -35,29 +35,53 @@ def resolve_service() -> str:
     return configured or env_default_service()
 
 
+def _attempts(target: str) -> list[tuple[str, dict]]:
+    """Return ordered (notify-service, extra-payload) attempts for a target.
+
+    Home Assistant has two notification mechanisms:
+
+    * legacy notify services, e.g. ``notify.mobile_app_x`` / ``notify.persistent_notification``
+      → POST ``/services/notify/<name>`` with ``message``/``title``;
+    * modern notify *entities*, e.g. ``notify.iphone_max`` (Companion app)
+      → POST ``/services/notify/send_message`` with ``entity_id`` + ``message``/``title``.
+
+    We pick based on the configured value and, for a bare name, fall back to the
+    entity call if the legacy service does not exist.
+    """
+    if target.startswith("notify."):
+        return [("send_message", {"entity_id": target})]
+    if "." in target:  # a full entity id of some other form
+        return [("send_message", {"entity_id": target})]
+    # Bare name: try legacy service first, then the notify entity of that name.
+    return [(target, {}), ("send_message", {"entity_id": f"notify.{target}"})]
+
+
 def send(title: str, message: str, service: str | None = None) -> str | None:
     """Send a notification. Returns ``None`` on success or an error string."""
-    service = (service or resolve_service()).strip() or DEFAULT_SERVICE
+    target = (service or resolve_service()).strip() or DEFAULT_SERVICE
     token = os.environ.get("SUPERVISOR_TOKEN")
     if not token:
         msg = "Kein SUPERVISOR_TOKEN – Versand nur im Home-Assistant-Add-on möglich."
         LOGGER.info("%s (%s — %s)", msg, title, message)
         return msg
 
-    url = f"{_CORE_API}/services/notify/{service}"
-    payload = {"message": message, "title": title}
-    try:
-        response = requests.post(
-            url,
-            json=payload,
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-            timeout=15,
-        )
-    except requests.RequestException as exc:
-        LOGGER.warning("Notification request failed: %s", exc)
-        return f"Anfrage fehlgeschlagen: {exc}"
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    attempts = _attempts(target)
+    last_error = ""
 
-    if response.status_code >= 400:
+    for index, (notify_service, extra) in enumerate(attempts):
+        url = f"{_CORE_API}/services/notify/{notify_service}"
+        payload = {**extra, "message": message, "title": title}
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=15)
+        except requests.RequestException as exc:
+            LOGGER.warning("Notification request failed: %s", exc)
+            return f"Anfrage fehlgeschlagen: {exc}"
+
+        if response.status_code < 400:
+            LOGGER.info("Notification sent via notify.%s -> %s", notify_service, target)
+            return None
+
         # Home Assistant usually returns the real reason as JSON {"message": ...}.
         detail = response.text[:200].replace("\n", " ").strip()
         try:
@@ -66,15 +90,17 @@ def send(title: str, message: str, service: str | None = None) -> str | None:
                 detail = str(body["message"])
         except ValueError:
             pass
-        hint = ""
-        if response.status_code == 400:
-            hint = (
-                f" — Der Dienst „notify.{service}“ existiert vermutlich nicht. "
-                "Prüfe den genauen Namen unter Entwicklerwerkzeuge → Aktionen "
-                "(meist „mobile_app_<gerät>“, z. B. mobile_app_iphone_max)."
-            )
-        LOGGER.warning("notify.%s failed: HTTP %s %s", service, response.status_code, detail)
-        return f"notify.{service} fehlgeschlagen: HTTP {response.status_code}: {detail}{hint}"
+        last_error = f"HTTP {response.status_code}: {detail}"
+        LOGGER.warning("notify.%s failed: %s", notify_service, last_error)
 
-    LOGGER.info("Notification sent via notify.%s", service)
-    return None
+        # On a 400 there may be a further attempt (legacy -> entity); try it.
+        if response.status_code == 400 and index < len(attempts) - 1:
+            continue
+        break
+
+    hint = (
+        " — Prüfe den genauen Namen unter Entwicklerwerkzeuge → Aktionen/Zustände. "
+        "Lege entweder einen Notify-Dienst (z. B. „mobile_app_iphone_max“) oder die "
+        "Notify-Entität (z. B. „notify.iphone_max“) als Wert fest."
+    )
+    return f"„{target}“ fehlgeschlagen: {last_error}{hint}"

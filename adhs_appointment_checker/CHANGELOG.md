@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0
+
+- Support modern Home Assistant notify **entities** (e.g. `notify.iphone_max`
+  from the Companion app), not just legacy notify services: values starting with
+  `notify.` are sent via the `notify.send_message` action with `entity_id`. A
+  bare name that isn't a legacy service automatically falls back to the matching
+  notify entity. Fixes the HTTP 400 when using a Companion-app notify entity.
+
 ## 0.7.0
 
 - Mobile UI: the results table now collapses into stacked, labelled cards on
