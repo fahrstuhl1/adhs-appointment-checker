@@ -38,6 +38,19 @@ app = Flask(__name__)
 scheduler = BackgroundScheduler(daemon=True)
 
 
+@app.template_filter("dt")
+def _format_datetime(value: str | None) -> str:
+    """Render an ISO timestamp as a compact German date/time, e.g. 12.06.2026 10:57."""
+    if not value:
+        return "nie"
+    try:
+        from datetime import datetime
+
+        return datetime.fromisoformat(value).strftime("%d.%m.%Y %H:%M")
+    except (ValueError, TypeError):
+        return value
+
+
 def _base_path() -> str:
     """Return the Home Assistant ingress base path (empty when run standalone)."""
     return request.headers.get("X-Ingress-Path", "")

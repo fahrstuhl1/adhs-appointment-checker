@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- UI: render the "last checked" timestamp as a compact German date/time
+  (`12.06.2026 10:57`) instead of the raw ISO string.
+- UI: tidy the per-row action buttons (Prüfen / Bearbeiten / Löschen) into a
+  consistent, evenly-aligned stack.
+
 ## 0.4.0
 
 - Fix: pre-configured doctors now also appear on installs **upgraded** from an

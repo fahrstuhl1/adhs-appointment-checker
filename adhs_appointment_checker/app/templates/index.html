@@ -127,12 +127,12 @@
               <div class="days">{{ s.available_days[:8] | join(', ') }}{% if s.available_days|length > 8 %} …{% endif %}</div>
             {% endif %}
           </td>
-          <td class="muted">{{ s.checked_at or 'nie' }}</td>
+          <td class="muted nowrap">{{ s.checked_at | dt }}</td>
           <td class="row-actions">
             <form method="post" action="{{ base_path }}/doctors/{{ doctor.id }}/check">
               <button class="btn btn-mini" type="submit">Prüfen</button>
             </form>
-            <a class="btn btn-mini btn-link" href="{{ base_path }}/?edit={{ doctor.id }}">Bearbeiten</a>
+            <a class="btn btn-mini btn-secondary" href="{{ base_path }}/?edit={{ doctor.id }}">Bearbeiten</a>
             <form method="post" action="{{ base_path }}/doctors/{{ doctor.id }}/delete"
                   onsubmit="return confirm('Diesen Arzt wirklich löschen?');">
               <button class="btn btn-mini btn-danger" type="submit">Löschen</button>

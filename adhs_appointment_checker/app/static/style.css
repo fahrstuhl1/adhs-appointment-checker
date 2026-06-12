@@ -97,8 +97,10 @@ th { color: var(--muted); font-weight: 600; font-size: .8rem; text-transform: up
 tr.disabled { opacity: .55; }
 tr.error-row td { border-bottom: 1px solid var(--border); padding-top: 0; }
 
-.row-actions { display: flex; gap: .35rem; align-items: center; flex-wrap: wrap; }
-.row-actions form { margin: 0; }
+.row-actions { display: flex; flex-direction: column; gap: .3rem; align-items: stretch; min-width: 104px; }
+.row-actions form { margin: 0; display: flex; }
+.row-actions .btn-mini { width: 100%; text-align: center; }
+.nowrap { white-space: nowrap; }
 
 .badge {
   display: inline-block;
